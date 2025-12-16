@@ -2,6 +2,9 @@
 
 OpenAI-compatible API proxy for Gonka that provides ChatGPT-like interface with API key authentication.
 
+👉 **Try it here:**  
+👉 https://gonka-gateway.mingles.ai/
+
 ## Features
 
 - **OpenAI-compatible API**: Compatible with OpenAI Python SDK and other OpenAI-compatible clients

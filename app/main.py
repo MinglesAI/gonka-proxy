@@ -10,6 +10,13 @@ from pydantic_settings import BaseSettings
 
 from app.gonka_client import GonkaClient
 from app.auth import verify_api_key
+from app.tool_emulation import (
+    emulate_tool_choice_auto,
+    process_response_with_tool_emulation,
+    process_stream_with_tool_emulation,
+)
+from app.circuit_breaker import CircuitBreaker, CircuitBreakerOpenError
+from app.retry import retry_with_backoff, BACKEND_RETRY_CONFIG
 
 
 # Configure logging
@@ -28,14 +35,17 @@ class Settings(BaseSettings):
     gonka_address: str = ""
     gonka_endpoint: str = ""
     gonka_provider_address: str = ""
-    
+
     # API Key for external access
     api_key: str = ""
-    
+
     # Server settings
     host: str = "0.0.0.0"
     port: int = 8000
-    
+
+    # Streaming read timeout (seconds); increase for slow/long generations
+    gonka_stream_read_timeout: float = 300.0
+
     class Config:
         env_file = ".env"
         case_sensitive = False
@@ -48,16 +58,21 @@ settings = Settings()
 gonka_client: Optional[GonkaClient] = None
 available_models: List[Dict] = []
 
+# Circuit breaker for Gonka backend
+gonka_circuit_breaker = CircuitBreaker(
+    name="gonka_backend",
+    failure_threshold=5,
+    recovery_timeout=60.0,
+    success_threshold=2,
+)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Lifespan context manager for startup and shutdown events"""
-    # Startup
     global gonka_client, available_models
-    
-    # Initialize client and load models
+
     try:
-        # Check if configuration is complete before loading models
         client = _create_gonka_client()
         if client:
             models = await client.get_models()
@@ -69,10 +84,9 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.error(f"Failed to load models at startup: {e}")
         available_models = []
-    
+
     yield
-    
-    # Shutdown
+
     if gonka_client:
         await gonka_client.close()
 
@@ -92,7 +106,8 @@ def _create_gonka_client() -> Optional[GonkaClient]:
             private_key=settings.gonka_private_key,
             address=settings.gonka_address,
             endpoint=settings.gonka_endpoint,
-            provider_address=settings.gonka_provider_address
+            provider_address=settings.gonka_provider_address,
+            stream_read_timeout=settings.gonka_stream_read_timeout,
         )
     return gonka_client
 
@@ -109,8 +124,8 @@ def get_gonka_client() -> GonkaClient:
         if not settings.gonka_endpoint:
             missing.append("GONKA_ENDPOINT")
         if not settings.gonka_provider_address:
-            missing.append("GONKA_PROVIDER_ADDRESS (provider address in bech32 format, get it from the Gonka provider)")
-        
+            missing.append("GONKA_PROVIDER_ADDRESS")
+
         raise HTTPException(
             status_code=500,
             detail=f"Gonka configuration incomplete. Missing: {', '.join(missing)}. "
@@ -142,19 +157,17 @@ app.add_middleware(
 async def list_models(request: Request, api_key_valid: bool = Depends(verify_api_key)):
     """List available models (OpenAI-compatible endpoint)"""
     global available_models
-    
-    # Convert Gonka models format to OpenAI format
+
     models_data = []
     for model in available_models:
         model_id = model.get("id", "unknown")
         models_data.append({
             "id": model_id,
             "object": "model",
-            "created": 1677610602,  # Default timestamp
+            "created": 1677610602,
             "owned_by": "gonka"
         })
-    
-    # If no models loaded, return default
+
     if not models_data:
         models_data = [{
             "id": "gonka-model",
@@ -162,21 +175,19 @@ async def list_models(request: Request, api_key_valid: bool = Depends(verify_api
             "created": 1677610602,
             "owned_by": "gonka"
         }]
-    
+
     return {
         "object": "list",
         "data": models_data
     }
+
 
 # Models endpoint without auth (for web interface)
 @app.get("/api/models")
 async def get_models_no_auth():
     """Get available models without authentication (for web interface)"""
     global available_models
-    
-    return {
-        "models": available_models
-    }
+    return {"models": available_models}
 
 
 # Chat completions endpoint
@@ -187,34 +198,47 @@ async def chat_completions(
 ):
     """Chat completions endpoint (OpenAI-compatible)"""
     client = get_gonka_client()
-    
+
     try:
         body = await request.json()
-        # Log incoming request body
         logger.info("Incoming chat completions request")
-        logger.info(f"Request body: {json.dumps(body, indent=2, ensure_ascii=False)}")
     except Exception as e:
         logger.error(f"Failed to parse request JSON: {e}")
         raise HTTPException(status_code=400, detail=f"Invalid JSON: {str(e)}")
-    
+
     stream = body.get("stream", False)
-    
+    original_tools = body.get("tools")
+
+    # Apply tool emulation if model doesn't support native tool calling
+    # (emulate_tool_choice_auto is a no-op when no tools are present)
+    emulated_body = emulate_tool_choice_auto(body)
+    tools_were_emulated = original_tools and "tools" not in emulated_body
+
     try:
         if stream:
-            # Streaming response - proxy SSE from Gonka
             async def generate():
                 try:
-                    async for chunk in client.request_stream(
+                    raw_stream = client.request_stream(
                         method="POST",
                         path="/chat/completions",
-                        payload=body
-                    ):
-                        # Yield chunk as-is (Gonka should return SSE format)
-                        yield chunk
+                        payload=emulated_body,
+                    )
+                    if tools_were_emulated:
+                        async for chunk in process_stream_with_tool_emulation(
+                            raw_stream, original_tools
+                        ):
+                            yield chunk
+                    else:
+                        async for chunk in raw_stream:
+                            yield chunk
+                except CircuitBreakerOpenError as e:
+                    logger.error(f"Circuit breaker open: {e}")
+                    error_payload = json.dumps({"error": {"message": str(e), "type": "service_unavailable"}})
+                    yield f"data: {error_payload}\n\ndata: [DONE]\n\n".encode()
                 except Exception as e:
                     logger.error(f"Streaming error: {type(e).__name__}: {str(e)}")
                     raise
-            
+
             return StreamingResponse(
                 generate(),
                 media_type="text/event-stream",
@@ -225,13 +249,31 @@ async def chat_completions(
                 }
             )
         else:
-            # Non-streaming response
-            response = await client.request(
-                method="POST",
-                path="/chat/completions",
-                payload=body
+            # Non-streaming: wrap with circuit breaker + retry
+            async def do_request():
+                return await gonka_circuit_breaker.call(
+                    client.request,
+                    method="POST",
+                    path="/chat/completions",
+                    payload=emulated_body,
+                )
+
+            response = await retry_with_backoff(
+                do_request,
+                max_retries=BACKEND_RETRY_CONFIG.max_retries,
+                initial_delay=BACKEND_RETRY_CONFIG.initial_delay,
+                max_delay=BACKEND_RETRY_CONFIG.max_delay,
+                exceptions=BACKEND_RETRY_CONFIG.exceptions,
             )
+
+            if tools_were_emulated:
+                response = process_response_with_tool_emulation(response, original_tools)
+
             return response
+
+    except CircuitBreakerOpenError as e:
+        logger.error(f"Circuit breaker open: {e}")
+        raise HTTPException(status_code=503, detail=f"Backend temporarily unavailable: {str(e)}")
     except Exception as e:
         logger.error(f"Chat completions error: {type(e).__name__}: {str(e)}")
         raise HTTPException(
@@ -246,11 +288,16 @@ async def web_interface():
     """Serve web chat interface"""
     return FileResponse("app/static/index.html")
 
+
 # Health check endpoint (no auth required)
 @app.get("/health")
 async def health():
     """Health check endpoint"""
-    return {"status": "ok"}
+    return {
+        "status": "ok",
+        "circuit_breaker": gonka_circuit_breaker.get_state(),
+    }
+
 
 # Serve static files (must be last)
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
@@ -264,4 +311,3 @@ if __name__ == "__main__":
         port=settings.port,
         reload=False
     )
-

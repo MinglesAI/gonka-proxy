@@ -3,22 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gonka AI Gateway - OpenAI-compatible LLM inference API with token-based billing</title>
+    <title>Gonka AI Gateway - OpenAI-compatible LLM proxy</title>
     <link rel="icon" type="image/svg+xml" href="/static/gonka.svg">
     <!-- Agent/bot documentation: public URL for autonomous agents (not linked in UI). -->
     <meta name="agent-docs" content="/agent">
     <link rel="alternate" type="application/json" href="/agent.json" title="Agent integration (JSON)">
     <script src="/static/chain-config.js"></script>
-    <!-- Google Analytics (GA4) -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-PVGXNF0HEF"></script>
     <script>
-      window.dataLayer = window.dataLayer || [];
-      function gtag(){dataLayer.push(arguments);}
-      gtag('js', new Date());
-      gtag('config', 'G-PVGXNF0HEF');
-      function gaEvent(name, params) {
-        try { if (typeof gtag === 'function') gtag('event', name, params || {}); } catch (e) {}
-      }
+      function gaEvent(name, params) { /* no-op in public proxy */ }
     </script>
     <style>
         * {
@@ -85,69 +77,7 @@
             gap: 16px;
         }
 
-        .balance {
-            background: var(--surface);
-            color: var(--text-primary);
-            padding: 8px 16px;
-            border-radius: 8px;
-            font-weight: 500;
-            font-size: 14px;
-            border: 1px solid var(--divider);
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-        
-        .balance-content {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        
-        .balance .deposit-btn-inline {
-            background: var(--primary-color);
-            color: white;
-            border: none;
-            padding: 6px 12px;
-            border-radius: 6px;
-            font-size: 12px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            white-space: nowrap;
-        }
-        
-        .balance .deposit-btn-inline:hover {
-            background: var(--primary-dark);
-            transform: translateY(-1px);
-        }
-        
-        .balance .deposit-btn-inline:active {
-            transform: translateY(0);
-        }
 
-        .connect-btn {
-            background: var(--primary-color);
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 8px;
-            font-size: 14px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            box-shadow: var(--shadow-sm);
-        }
-
-        .connect-btn:hover {
-            background: var(--primary-dark);
-            box-shadow: var(--shadow-md);
-            transform: translateY(-1px);
-        }
-
-        .connect-btn:active {
-            transform: translateY(0);
-        }
 
         .main-content {
             display: grid;
@@ -887,74 +817,7 @@
             margin-top: 16px;
         }
 
-        /* Deposit confirmation modal */
-        #depositConfirmationModal {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.5);
-            z-index: 10000;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            backdrop-filter: blur(4px);
-        }
 
-        #depositConfirmationModal > div {
-            background: var(--surface);
-            padding: 32px;
-            border-radius: 12px;
-            max-width: 500px;
-            width: 90%;
-            box-shadow: var(--shadow-lg);
-            border: 1px solid var(--divider);
-        }
-
-        #depositConfirmationModal h2 {
-            margin-bottom: 20px;
-            color: var(--text-primary);
-        }
-
-        #depositConfirmationModal code {
-            display: block;
-            padding: 12px;
-            background: var(--background);
-            border-radius: 8px;
-            margin-bottom: 16px;
-            word-break: break-all;
-            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
-            font-size: 13px;
-            border: 1px solid var(--divider);
-        }
-
-        #depositConfirmationModal input {
-            width: 100%;
-            padding: 12px;
-            border: 1px solid var(--divider);
-            border-radius: 8px;
-            font-size: 14px;
-            background: var(--surface);
-            color: var(--text-primary);
-            transition: all 0.2s ease;
-        }
-
-        #depositConfirmationModal input:focus {
-            outline: none;
-            border-color: var(--primary-color);
-            box-shadow: 0 0 0 3px rgba(25, 118, 210, 0.1);
-        }
-
-        #depositConfirmationModal .modal-buttons {
-            display: flex;
-            gap: 12px;
-            margin-top: 20px;
-        }
-
-        #depositConfirmationModal .modal-buttons button {
-            flex: 1;
-        }
     </style>
 </head>
 <body>
@@ -962,70 +825,33 @@
         <div class="header">
             <div>
                 <h1><img src="/static/gonka.svg" alt="Gonka" style="width: 32px; height: 32px; vertical-align: middle; margin-right: 8px;"> Gonka AI Gateway</h1>
-                <p style="margin: 4px 0 0 0; font-size: 13px; color: var(--text-secondary);">OpenAI-compatible LLM inference API with token-based billing</p>
-                <p id="gnkPriceDisplay" style="margin: 6px 0 0 0; font-size: 12px; color: var(--primary-color); font-weight: 500; opacity: 0.8;">GNK: $<span id="gnkPriceValue">4.00</span></p>
-            </div>
-            <div class="user-info">
-                <div id="balanceDisplay" class="balance" style="display: none; margin-right: 10px;">
-                    <div class="balance-content">
-                        <span>Balance: <span id="balanceValue">0</span></span>
-                    </div>
-                    <button id="depositBtnHeader" class="deposit-btn-inline" style="display: none;">Deposit</button>
-                </div>
-                <div id="userAddress" style="display: none; color: var(--text-secondary); margin-right: 10px; font-size: 13px; font-family: monospace;"></div>
-                <button id="logoutBtn" class="btn" style="display: none; background: var(--background); color: var(--text-primary); border: 1px solid var(--divider);">Logout</button>
-                <button id="connectGoogleBtn" class="connect-btn" style="margin-right: 10px; background: #4285f4;">Login with Google</button>
-                <button id="connectBtn" class="connect-btn">Connect Wallet (Keplr/Leap)</button>
+                <p style="margin: 4px 0 0 0; font-size: 13px; color: var(--text-secondary);">OpenAI-compatible LLM proxy</p>
             </div>
         </div>
         
         <div class="main-content">
             <div class="sidebar">
                 <ul class="sidebar-nav">
-                    <li><a href="#" data-page="dashboard">Dashboard</a></li>
                     <li><a href="#" data-page="chat" class="active">Chat</a></li>
-                    <li><a href="#" data-page="api-keys">API Keys</a></li>
-                    <li><a href="#" data-page="transactions">Transactions</a></li>
                     <li><a href="#" data-page="docs">API Docs</a></li>
                     <li><a href="#" data-page="openclaw">Connect to OpenClaw</a></li>
                 </ul>
             </div>
 
             <div class="content-area">
-                <!-- Dashboard -->
-                <div id="dashboard" class="page">
-                    <h2>Dashboard</h2>
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
-                        <div class="stats-grid" style="flex: 1;">
-                            <div class="stat-card">
-                                <h3>Balance</h3>
-                                <div class="value" id="dashboardBalance">0 GNK</div>
-                            </div>
-                            <div class="stat-card">
-                                <h3>API Keys</h3>
-                                <div class="value" id="dashboardKeys">0</div>
-                            </div>
-                            <div class="stat-card">
-                                <h3>Total Spent</h3>
-                                <div class="value" id="dashboardSpent">0 ngonka</div>
-                            </div>
-                            <div class="stat-card">
-                                <h3>Total Inferences</h3>
-                                <div class="value" id="dashboardInferences">0</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
                 <!-- Chat -->
                 <div id="chat" class="page active">
                     <h2>Chat</h2>
+                    <div style="margin-bottom: 12px; display: flex; gap: 10px; align-items: center;">
+                        <label for="chatApiKey" style="font-weight: 600; white-space: nowrap;">API Key:</label>
+                        <input type="password" id="chatApiKey" placeholder="sk-..." style="padding: 8px 12px; border: 1px solid #ddd; border-radius: 8px; flex: 1; max-width: 340px; font-size: 14px;" />
+                    </div>
                     <div style="margin-bottom: 15px; display: flex; gap: 10px; align-items: center;">
                         <label for="chatModel" style="font-weight: 600;">Model:</label>
                         <select id="chatModel" style="padding: 8px 12px; border: 1px solid #ddd; border-radius: 8px; flex: 1; max-width: 300px;">
-                    <option value="">Loading models...</option>
-                </select>
-            </div>
+                            <option value="">Loading models...</option>
+                        </select>
+                    </div>
                     <div class="chat-container">
                         <div class="chat-messages" id="chatMessages">
                             <div class="empty-state">
@@ -1036,22 +862,8 @@
                             <input type="text" id="chatInput" placeholder="Enter your message..." />
                             <button id="sendChatBtn">Send</button>
                         </div>
-            </div>
-        </div>
-
-                <!-- API Keys -->
-                <div id="api-keys" class="page">
-                    <h2>API Keys</h2>
-                    <button class="btn btn-primary" id="createKeyBtn">Create New API Key</button>
-                    <div id="newKeyDisplay"></div>
-                    <div class="api-keys-list" id="apiKeysList"></div>
-            </div>
-
-                <!-- Transactions -->
-                <div id="transactions" class="page">
-                    <h2>Transaction History</h2>
-                    <div class="transactions-list" id="transactionsList"></div>
-        </div>
+                    </div>
+                </div>
 
                 <!-- Docs -->
                 <div id="docs" class="page">
@@ -1060,25 +872,15 @@
 
                     <div class="docs-section">
                         <h3>Getting Started</h3>
-                        <p>Gonka AI Gateway provides an OpenAI-compatible API with Web3 authentication and token-based billing.</p>
-                        <div class="docs-note">
-                            <strong>Note:</strong> You need to authorize and create an API key before using the API.
-                        </div>
+                        <p>Gonka AI Gateway provides an OpenAI-compatible API. Configure the <code>API_KEY</code> environment variable on the proxy server; clients authenticate using that key.</p>
                     </div>
 
                     <div class="docs-section">
                         <h3>Authentication</h3>
-                        <p>All API requests require authentication using an API key in the Authorization header:</p>
+                        <p>All API requests require the API key in the Authorization header:</p>
                         <div class="docs-code-block">
                             <code>Authorization: Bearer sk-your-api-key-here</code>
                         </div>
-                        <h4>Getting Your API Key</h4>
-                        <ol style="margin-left: 20px; margin-top: 10px;">
-                            <li>Authorize on the dashboard</li>
-                            <li>Navigate to "API Keys" section</li>
-                            <li>Click "Create New API Key"</li>
-                            <li>Save the key immediately - it won't be shown again!</li>
-                        </ol>
                     </div>
 
                     <div class="docs-section">
@@ -1231,30 +1033,13 @@ print(result["choices"][0]["message"]["content"])</code>
                     </div>
 
                     <div class="docs-section">
-                        <h3>Token Billing</h3>
-                        <p>Each API request consumes GNK tokens from your balance. Tokens are calculated from the API response and balance is automatically deducted after each request.</p>
-                        <div class="docs-note">
-                            <strong>Pricing Note:</strong> We are currently in a trial period on the Gonka network. During this time, inference prices are very low - just tiny fractions of GNK tokens. Final pricing will be announced after the trial period ends.
-                        </div>
-                        <div class="docs-warning">
-                            <strong>Warning:</strong> If your balance is insufficient, the request will fail with a 402 Payment Required error.
-                        </div>
-                        <h4>Checking Your Balance</h4>
-                        <p>You can check your balance on the dashboard or via the API:</p>
-                        <div class="docs-code-block">
-                            <code>GET /api/user/balance<br>
-Authorization: Bearer sk-your-api-key</code>
-                        </div>
-                    </div>
-
-                    <div class="docs-section">
                         <h3>Rate Limits</h3>
                         <p>Currently, there are no rate limits. However, please use the API responsibly.</p>
                     </div>
 
                     <div class="docs-section">
                         <h3>Support</h3>
-                        <p>For issues or questions, please contact support or check the dashboard for your transaction history.</p>
+                        <p>For issues or questions, join our <a href="https://discord.gg/mPd629wmSq" target="_blank" rel="noopener noreferrer" style="color: var(--primary-color);">Discord</a> or open an issue on <a href="https://github.com/MinglesAI/gonka-proxy" target="_blank" rel="noopener noreferrer" style="color: var(--primary-color);">GitHub</a>.</p>
                     </div>
                 </div>
 
@@ -1364,858 +1149,54 @@ Authorization: Bearer sk-your-api-key</code>
 
     <script>
         // Global state
-        let currentUser = null;
-        let currentApiKey = null;
         let messages = [];
-        let walletAddress = null;
-        let gnkPriceUsd = 4.0; // Default GNK price in USD
-        let modelPrices = {}; // Map of model_id -> price_per_token_ngonka
-        let maxPricePerTokenNgonka = 0; // Maximum price per token across all models
 
-        // Check if Keplr or Leap is available
-        function getWallet() {
-            if (typeof window !== 'undefined') {
-                if (window.keplr) {
-                    return { type: 'keplr', wallet: window.keplr };
-                } else if (window.leap) {
-                    return { type: 'leap', wallet: window.leap };
-                }
-            }
-            return null;
-        }
-        
-        // Check wallet on page load (will be called in main load handler)
-        function checkWalletAvailability() {
-            const wallet = getWallet();
-            if (!wallet) {
-                const btn = document.getElementById('connectBtn');
-                if (btn) {
-                    btn.textContent = 'Install Keplr/Leap Wallet';
-                    btn.onclick = () => {
-                        // Show options for both wallets
-                        const choice = confirm('Choose wallet:\nOK for Keplr\nCancel for Leap');
-                        if (choice) {
-                            window.open('https://www.keplr.app/', '_blank');
-                        } else {
-                            window.open('https://www.leapwallet.io/', '_blank');
-                        }
-                    };
-                }
-            }
-        }
-
-        // Connect with Google
-        async function connectGoogle() {
+        // Load chat models
+        async function loadChatModels() {
             try {
-                // Open Google OAuth in a popup window
-                const width = 500;
-                const height = 600;
-                const left = (window.screen.width - width) / 2;
-                const top = (window.screen.height - height) / 2;
-                
-                const popup = window.open(
-                    '/api/auth/google/start',
-                    'Google Login',
-                    `width=${width},height=${height},left=${left},top=${top},toolbar=no,menubar=no,scrollbars=yes,resizable=yes`
-                );
-                
-                // Listen for message from popup
-                const messageListener = (event) => {
-                    // Check origin for security (in production, use your actual domain)
-                    if (event.data && event.data.type === 'google_auth_success') {
-                        window.removeEventListener('message', messageListener);
-                        popup.close();
-                        gaEvent('login', { method: 'google' });
-                        // Set user and API key
-                        currentUser = event.data.user;
-                        if (event.data.api_key) {
-                            currentApiKey = event.data.api_key;
-                            localStorage.setItem('gonka_api_key', currentApiKey);
-                        }
-                        
-                        // Save session
-                        saveSession(currentUser, currentApiKey, null);
-                        
-                        // Update UI
-                        updateUI().then(() => {
-                            // Load dashboard data
-                            if (currentApiKey) {
-                                loadDashboard();
-                                if (typeof loadAPIKeys === 'function') {
-                                    loadAPIKeys();
-                                }
-                                if (typeof loadTransactions === 'function') {
-                                    loadTransactions();
-                                }
-                            }
-                            loadChatModels();
-                        });
-                    }
-                };
-                
-                window.addEventListener('message', messageListener);
-                
-                // Check if popup was closed
-                const checkClosed = setInterval(() => {
-                    if (popup.closed) {
-                        clearInterval(checkClosed);
-                        window.removeEventListener('message', messageListener);
-                    }
-                }, 1000);
-                
-            } catch (error) {
-                console.error('Google login error:', error);
-                gaEvent('login_error', { method: 'google', error: (error && error.message) || 'Unknown error' });
-                alert('Failed to connect with Google: ' + (error.message || 'Unknown error'));
-            }
-        }
-        
-        // Connect wallet
-        async function connectWallet() {
-            const wallet = getWallet();
-            if (!wallet) {
-                const installChoice = confirm('Please install a wallet extension:\n\nOK - Install Keplr\nCancel - Install Leap');
-                if (installChoice) {
-                    window.open('https://www.keplr.app/', '_blank');
+                const response = await fetch('/api/models');
+                const data = await response.json();
+                const models = data.models || [];
+
+                const modelSelect = document.getElementById('chatModel');
+                if (!modelSelect) return;
+
+                modelSelect.innerHTML = '';
+
+                if (models.length === 0) {
+                    const option = document.createElement('option');
+                    option.value = 'Qwen/Qwen3-235B-A22B-Instruct-2507-FP8';
+                    option.textContent = 'Qwen/Qwen3-235B-A22B-Instruct-2507-FP8 (default)';
+                    modelSelect.appendChild(option);
                 } else {
-                    window.open('https://www.leapwallet.io/', '_blank');
-                }
-                return;
-            }
-
-            try {
-                // Request access to Gonka chain
-                const chainId = 'gonka-mainnet';
-                
-                console.log('Attempting to connect wallet:', wallet.type);
-                
-                // First, try to suggest chain (this will show wallet popup if chain not added)
-                try {
-                    if (typeof suggestGonkaChain !== 'undefined') {
-                        console.log('Suggesting chain to wallet...');
-                        await suggestGonkaChain(wallet);
-                        console.log('Chain suggested successfully');
-                    }
-                } catch (suggestError) {
-                    console.log('Chain suggestion error (may be already added):', suggestError.message);
-                    // Continue anyway - chain might already be added
-                }
-                
-                // Enable chain - this should show wallet popup
-                // Use direct window access to ensure popup appears
-                console.log('Enabling chain:', chainId, 'with wallet:', wallet.type);
-                
-                if (wallet.type === 'keplr' && window.keplr) {
-                    await window.keplr.enable(chainId);
-                } else if (wallet.type === 'leap' && window.leap) {
-                    await window.leap.enable(chainId);
-                } else {
-                    throw new Error('Wallet not available');
-                }
-                console.log('Chain enabled successfully');
-                
-                // Get account - works for both Keplr and Leap
-                console.log('Getting account from wallet...');
-                let offlineSigner, accounts, address;
-                
-                if (wallet.type === 'keplr') {
-                    offlineSigner = wallet.wallet.getOfflineSigner(chainId);
-                    accounts = await offlineSigner.getAccounts();
-                    address = accounts[0].address;
-                } else if (wallet.type === 'leap') {
-                    // Leap uses similar API
-                    offlineSigner = wallet.wallet.getOfflineSigner(chainId);
-                    accounts = await offlineSigner.getAccounts();
-                    address = accounts[0].address;
-                }
-                
-                console.log('Got address:', address);
-
-                // Get auth message
-                console.log('Getting auth message from server...');
-                const messageRes = await fetch(`/api/auth/message?address=${encodeURIComponent(address)}`);
-                const { message, timestamp, chain_id } = await messageRes.json();
-                
-                // Use chain_id from server if provided
-                const finalChainId = chain_id || 'gonka-mainnet';
-                console.log('Auth message received, signing...');
-
-                // Sign message - handle both Keplr and Leap
-                let signatureData;
-                try {
-                    if (wallet.type === 'keplr') {
-                        // Keplr signing
-                        signatureData = await wallet.wallet.signArbitrary(finalChainId, address, message);
-                    } else if (wallet.type === 'leap') {
-                        // Leap signing - uses similar API
-                        try {
-                            signatureData = await wallet.wallet.signArbitrary(finalChainId, address, message);
-                        } catch (leapError) {
-                            // Try alternative Leap API
-                            if (window.leap && window.leap.signArbitrary) {
-                                signatureData = await window.leap.signArbitrary(finalChainId, address, message);
-                            } else {
-                                throw leapError;
-                            }
-                        }
-                }
-            } catch (error) {
-                    console.error('Signing error:', error);
-                    // Try direct window access as fallback
-                    if (wallet.type === 'keplr' && window.keplr) {
-                        signatureData = await window.keplr.signArbitrary(finalChainId, address, message);
-                    } else if (wallet.type === 'leap' && window.leap) {
-                        if (window.leap.signArbitrary) {
-                            signatureData = await window.leap.signArbitrary(finalChainId, address, message);
-                        } else {
-                            throw new Error('Leap wallet signing method not available. Please update your Leap extension.');
-                        }
-                    } else {
-                        throw error;
-                    }
-                }
-
-                // Extract signature - handle different response formats
-                let signature;
-                if (typeof signatureData === 'string') {
-                    signature = signatureData;
-                } else if (signatureData && signatureData.signature) {
-                    signature = signatureData.signature;
-                } else if (signatureData && signatureData.signatureBase64) {
-                    // Some wallets return base64
-                    signature = signatureData.signatureBase64;
-                } else {
-                    // Try to stringify if it's an object
-                    signature = JSON.stringify(signatureData);
-                }
-
-                // Authenticate
-                console.log('Sending auth request to server...');
-                console.log('Address:', address);
-                console.log('Message length:', message.length);
-                console.log('Signature length:', signature ? signature.length : 0);
-                
-                const authRes = await fetch('/api/auth/web3', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        address,
-                        message,
-                        signature: signature,
-                        timestamp
-                    })
-                });
-
-                if (!authRes.ok) {
-                    // Try to get error details from response
-                    let errorDetail = 'Authentication failed';
-                    try {
-                        const errorData = await authRes.json();
-                        errorDetail = errorData.detail || errorData.message || errorDetail;
-                        console.error('Auth error response:', errorData);
-                    } catch (e) {
-                        console.error('Failed to parse error response:', e);
-                        errorDetail = `HTTP ${authRes.status}: ${authRes.statusText}`;
-                    }
-                    throw new Error(errorDetail);
-                }
-
-                const data = await authRes.json();
-                currentUser = data.user;
-                walletAddress = address; // Save wallet address
-                
-                console.log('Auth response:', { hasApiKey: !!data.api_key, userAddress: data.user.address });
-                
-                // Save auto-generated API key if provided
-                if (data.api_key) {
-                    console.log('Using new auto-generated API key');
-                    currentApiKey = data.api_key;
-                    localStorage.setItem('gonka_api_key', currentApiKey);
-                } else {
-                    // Try to load from localStorage
-                    const savedKey = localStorage.getItem('gonka_api_key');
-                    console.log('No new API key, checking localStorage:', savedKey ? 'found key' : 'no key');
-                    
-                    if (savedKey) {
-                        // Verify the key belongs to this user
-                        try {
-                            console.log('Verifying saved API key...');
-                            const verifyRes = await fetch('/api/user/me', {
-                                headers: { 'Authorization': `Bearer ${savedKey}` }
-                            });
-                            if (verifyRes.ok) {
-                                const verifyData = await verifyRes.json();
-                                console.log('API key verification result:', verifyData);
-                                // Check if key belongs to current user
-                                // Compare user identifiers (address, email, google_id, or id)
-                                const currentUserId = currentUser.address || currentUser.email || currentUser.google_id || currentUser.id;
-                                const verifyUserId = verifyData.address || verifyData.email || verifyData.google_id || verifyData.id;
-                                if (verifyUserId === currentUserId) {
-                                    console.log('Saved API key is valid for this user');
-                                    currentApiKey = savedKey;
-                                } else {
-                                    console.log('Saved API key belongs to different user, clearing');
-                                    // Key belongs to different user, clear it
-                                    localStorage.removeItem('gonka_api_key');
-                                    currentApiKey = null;
-                                }
-                            } else {
-                                console.log('Saved API key is invalid, clearing');
-                                // Invalid key, clear it
-                                localStorage.removeItem('gonka_api_key');
-                                currentApiKey = null;
-                            }
-                        } catch (e) {
-                            console.error('Failed to verify saved API key:', e);
-                            localStorage.removeItem('gonka_api_key');
-                            currentApiKey = null;
-                        }
-                    } else {
-                        console.log('No saved API key in localStorage');
-                        currentApiKey = null;
-                    }
-                    
-                    // If no valid key, user needs to create one manually
-                    if (!currentApiKey) {
-                        console.log('No API key available, user needs to create one manually');
-                    }
-                }
-                
-                // Save session for 1 week
-                saveSession(currentUser, currentApiKey, walletAddress);
-                
-                await updateUI();
-                
-                // Wait a bit to ensure UI is updated
-                await new Promise(resolve => setTimeout(resolve, 100));
-                
-                // Force reload all data - ensure API key is set
-                if (!currentApiKey) {
-                    currentApiKey = localStorage.getItem('gonka_api_key');
-                }
-                
-                if (currentApiKey) {
-                    await loadDashboard();
-                    if (typeof loadAPIKeys === 'function') {
-                        await loadAPIKeys();
-                    }
-                    if (typeof loadTransactions === 'function') {
-                        await loadTransactions();
-                    }
-                } else {
-                    console.warn('No API key available after login, data will not be loaded');
-                }
-                gaEvent('login', { method: wallet.type });
-                loadChatModels();
-            } catch (error) {
-                console.error('Wallet connection error:', error);
-                console.error('Error details:', {
-                    message: error.message,
-                    stack: error.stack,
-                    name: error.name
-                });
-                
-                let errorMsg = 'Failed to connect wallet: ' + (error.message || 'Unknown error');
-                
-                // Provide helpful error messages
-                if (error.message && (error.message.includes('rejected') || error.message.includes('User rejected'))) {
-                    errorMsg = 'Wallet connection was rejected. Please approve the connection request in your wallet.';
-                } else if (error.message && (error.message.includes('chain') || error.message.includes('not found') || error.message.includes('No chain'))) {
-                    errorMsg = 'Gonka mainnet chain not found in your wallet.\n\n' +
-                              'Please add the network manually:\n' +
-                              'Chain ID: gonka-mainnet\n' +
-                              'RPC: http://node2.gonka.ai:26657\n\n' +
-                              'Or try entering your address manually.';
-                              
-                    const manualAddress = prompt('Enter your Gonka address manually (gonka1...):');
-                    if (manualAddress && manualAddress.startsWith('gonka')) {
-                        try {
-                            const messageRes = await fetch(`/api/auth/message?address=${encodeURIComponent(manualAddress)}`);
-                            const { message, timestamp } = await messageRes.json();
-                            
-                            const authRes = await fetch('/api/auth/web3', {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({
-                                    address: manualAddress,
-                                    message: message,
-                                    signature: 'manual-entry-dev-mode',
-                                    timestamp: timestamp
-                                })
-                            });
-                            
-                            if (authRes.ok) {
-                                const data = await authRes.json();
-                                currentUser = data.user;
-                                if (data.api_key) {
-                                    currentApiKey = data.api_key;
-                                    localStorage.setItem('gonka_api_key', currentApiKey);
-                                }
-                                gaEvent('login', { method: 'manual' });
-                                updateUI();
-                                loadDashboard();
-                                return;
-                            }
-                        } catch (manualError) {
-                            console.error('Manual entry error:', manualError);
-                            gaEvent('login_error', { method: 'manual', error: (manualError && manualError.message) || 'Unknown error' });
-                            alert('Manual entry failed: ' + ((manualError && manualError.message) || 'Unknown error'));
-                            return;
-                        }
-                    }
-                } else if (error.message && error.message.includes('sign')) {
-                    errorMsg = 'Signature request was rejected. Please approve the signature in your ' + 
-                              (wallet && wallet.type === 'keplr' ? 'Keplr' : 'Leap') + ' wallet.';
-                }
-
-                let errorType = 'other';
-                if (error.message && (error.message.includes('rejected') || error.message.includes('User rejected'))) errorType = 'rejected';
-                else if (error.message && (error.message.includes('chain') || error.message.includes('not found') || error.message.includes('No chain'))) errorType = 'chain';
-                else if (error.message && error.message.includes('sign')) errorType = 'sign';
-                else if (error.message && (error.message.includes('Authentication') || error.message.includes('auth') || error.message.includes('401'))) errorType = 'auth';
-                gaEvent('login_error', { method: (wallet && wallet.type) || 'wallet', error: errorMsg, error_type: errorType });
-
-                alert(errorMsg);
-            }
-        }
-
-        // Calculate estimated tokens from balance using maximum price per token
-        function calculateEstimatedTokens(balanceGNK) {
-            if (!maxPricePerTokenNgonka || maxPricePerTokenNgonka <= 0) {
-                return 0;
-            }
-            // Convert balance to ngonka
-            const balanceNgonka = balanceGNK * 1000000000;
-            // Calculate tokens: balance_ngonka / price_per_token_ngonka
-            return Math.floor(balanceNgonka / maxPricePerTokenNgonka);
-        }
-
-        // Update UI after login
-        async function updateUI() {
-            if (currentUser) {
-                document.getElementById('connectBtn').style.display = 'none';
-                document.getElementById('connectGoogleBtn').style.display = 'none';
-                document.getElementById('balanceDisplay').style.display = 'block';
-                // Convert GNK to ngonka (1 GNK = 1,000,000,000 ngonka)
-                const ngonka = Math.floor(currentUser.balance * 1000000000);
-                const estimatedTokens = calculateEstimatedTokens(currentUser.balance);
-                document.getElementById('balanceValue').innerHTML = ngonka.toLocaleString() + ' <span title="1 GNK = 1.000.000.000 ngonka" style="cursor: help; text-decoration: underline; text-decoration-style: dotted;">ngonka</span><br><small style="opacity: 0.7; font-size: 11px;">~' + estimatedTokens.toLocaleString() + ' tokens</small>';
-                document.getElementById('userAddress').style.display = 'block';
-                // Display email for Google users, address for wallet users
-                const userIdentifier = currentUser.email || currentUser.address || currentUser.google_id || currentUser.id;
-                const displayText = currentUser.email || (userIdentifier.length > 14 
-                    ? `${userIdentifier.substring(0, 8)}...${userIdentifier.substring(userIdentifier.length - 6)}`
-                    : userIdentifier);
-                document.getElementById('userAddress').textContent = displayText;
-                document.getElementById('logoutBtn').style.display = 'block';
-                // Only show deposit button for wallet users
-                if (currentUser.address && !currentUser.email) {
-                    document.getElementById('depositBtnHeader').style.display = 'block';
-                } else {
-                    document.getElementById('depositBtnHeader').style.display = 'none';
-                }
-            }
-        }
-        
-        // Load dashboard data
-        async function loadDashboard() {
-            if (!currentUser) return;
-            
-            // Try to get API key from localStorage or use first available
-            if (!currentApiKey) {
-                currentApiKey = localStorage.getItem('gonka_api_key');
-            }
-            
-            if (!currentApiKey) {
-                // Try to get first API key
-                try {
-                    // We need to create an API key first
-                    return;
-                } catch (e) {
-                    console.error('No API key available');
-                return;
-                }
-            }
-
-            try {
-                const [balanceRes, keysRes, transactionsRes] = await Promise.all([
-                    fetch('/api/user/balance', {
-                        headers: { 'Authorization': `Bearer ${currentApiKey}` }
-                    }),
-                    fetch('/api/keys', {
-                        headers: { 'Authorization': `Bearer ${currentApiKey}` }
-                    }),
-                    fetch('/api/transactions?limit=100', {
-                        headers: { 'Authorization': `Bearer ${currentApiKey}` }
-                    })
-                ]);
-
-                const balance = await balanceRes.json();
-                const keys = await keysRes.json();
-                const transactions = await transactionsRes.json();
-
-                // Convert to ngonka
-                const ngonka = Math.floor(balance.balance * 1000000000);
-                const estimatedTokens = calculateEstimatedTokens(balance.balance);
-                document.getElementById('dashboardBalance').innerHTML = ngonka.toLocaleString() + ' <span title="1 GNK = 1.000.000.000 ngonka" style="cursor: help; text-decoration: underline; text-decoration-style: dotted;">ngonka</span><br><small style="opacity: 0.7; font-size: 11px;">~' + estimatedTokens.toLocaleString() + ' tokens</small>';
-                document.getElementById('dashboardKeys').textContent = keys.keys.length;
-                
-                const totalSpent = transactions.transactions
-                    .filter(t => t.amount < 0)
-                    .reduce((sum, t) => sum + Math.abs(t.amount), 0);
-                const totalSpentNgonka = Math.floor(totalSpent * 1000000000);
-                document.getElementById('dashboardSpent').textContent = totalSpentNgonka.toLocaleString() + ' ngonka';
-                
-                // Count total inferences (chat transactions)
-                const totalInferences = transactions.transactions
-                    .filter(t => t.transaction_type === 'chat')
-                    .length;
-                document.getElementById('dashboardInferences').textContent = totalInferences.toLocaleString();
-            } catch (error) {
-                console.error('Failed to load dashboard:', error);
-                gaEvent('dashboard_load_error', { error: (error && error.message) || 'Unknown error' });
-            }
-        }
-
-        // Load API keys
-        async function loadAPIKeys() {
-            if (!currentUser) {
-                console.log('loadAPIKeys: No currentUser');
-                return;
-            }
-            
-            if (!currentApiKey) {
-                currentApiKey = localStorage.getItem('gonka_api_key');
-            }
-            
-            if (!currentApiKey) {
-                console.log('loadAPIKeys: No API key available');
-                const list = document.getElementById('apiKeysList');
-                if (list) {
-                    list.innerHTML = '<div class="empty-state">Please create an API key first</div>';
-                }
-                return;
-            }
-            
-            console.log('loadAPIKeys: Loading with API key');
-
-            try {
-                console.log('loadAPIKeys: Making request with API key:', currentApiKey ? currentApiKey.substring(0, 10) + '...' : 'null');
-                const res = await fetch('/api/keys', {
-                    headers: { 'Authorization': `Bearer ${currentApiKey}` }
-                });
-                
-                if (!res.ok) {
-                    const errorText = await res.text();
-                    console.error('loadAPIKeys: API error:', res.status, errorText);
-                    throw new Error(`Failed to load API keys: ${res.status} ${errorText}`);
-                }
-                
-                const data = await res.json();
-                console.log('loadAPIKeys: Received data:', data);
-                
-                const list = document.getElementById('apiKeysList');
-                if (!list) {
-                    console.error('loadAPIKeys: apiKeysList element not found');
-                    return;
-                }
-                list.innerHTML = '';
-
-                if (!data.keys || data.keys.length === 0) {
-                    list.innerHTML = '<div class="empty-state">No API keys yet</div>';
-                    return;
-                }
-
-                // Count inferences per key
-                const keyInferenceCounts = {};
-                if (currentApiKey) {
-                    try {
-                        const transactionsRes = await fetch('/api/transactions?limit=1000', {
-                            headers: { 'Authorization': `Bearer ${currentApiKey}` }
-                        });
-                        if (transactionsRes.ok) {
-                            const transactionsData = await transactionsRes.json();
-                            transactionsData.transactions
-                                .filter(t => t.transaction_type === 'chat' && t.metadata && t.metadata.api_key_id)
-                                .forEach(t => {
-                                    const keyId = t.metadata.api_key_id;
-                                    keyInferenceCounts[keyId] = (keyInferenceCounts[keyId] || 0) + 1;
-                                });
-                        }
-                    } catch (e) {
-                        console.error('Failed to load transactions for key stats:', e);
-                    }
-                }
-
-                data.keys.forEach(key => {
-                    const inferenceCount = keyInferenceCounts[key.id] || 0;
-                    const item = document.createElement('div');
-                    item.className = 'api-key-item';
-                    item.innerHTML = `
-                        <div class="info">
-                            <div class="name">${key.key_name || 'Unnamed Key'}</div>
-                            <div class="meta">
-                                Created: ${new Date(key.created_at).toLocaleDateString()}
-                                ${key.last_used_at ? ' | Last used: ' + new Date(key.last_used_at).toLocaleDateString() : ''}
-                                | Inferences: ${inferenceCount.toLocaleString()}
-                </div>
-                        </div>
-                        <button class="btn btn-danger" onclick="deleteKey(${key.id})">Delete</button>
-                    `;
-                    list.appendChild(item);
-                });
-            } catch (error) {
-                console.error('Failed to load API keys:', error);
-                gaEvent('api_keys_load_error', { error: (error && error.message) || 'Unknown error' });
-            }
-        }
-
-        // Create API key
-        async function createAPIKey() {
-            if (!currentUser) {
-                alert('Please connect wallet first');
-                return;
-            }
-            
-            if (!currentApiKey) {
-                currentApiKey = localStorage.getItem('gonka_api_key');
-            }
-            
-            if (!currentApiKey) {
-                alert('Please connect wallet first');
-                return;
-            }
-
-            const name = prompt('Enter API key name (optional):');
-            try {
-                const res = await fetch('/api/keys', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${currentApiKey}`
-                    },
-                    body: JSON.stringify({ key_name: name || null })
-                });
-
-                const data = await res.json();
-                
-                const display = document.getElementById('newKeyDisplay');
-                display.innerHTML = `
-                    <div class="new-key-display">
-                        <strong>New API Key Created!</strong>
-                        <p>Save this key - it won't be shown again:</p>
-                        <code>${data.key}</code>
-                    </div>
-                `;
-                
-                // Save to localStorage if this is the first key
-                if (!currentApiKey) {
-                    currentApiKey = data.key;
-                    localStorage.setItem('gonka_api_key', currentApiKey);
-                }
-
-                loadAPIKeys();
-                gaEvent('api_key_created', {});
-            } catch (error) {
-                console.error('Failed to create API key:', error);
-                gaEvent('api_key_error', { error: (error && error.message) || 'Unknown error' });
-                alert('Failed to create API key');
-            }
-        }
-
-        // Delete API key
-        async function deleteKey(keyId) {
-            if (!confirm('Are you sure you want to delete this API key?')) return;
-            if (!currentApiKey) return;
-
-            try {
-                const res = await fetch(`/api/keys/${keyId}`, {
-                    method: 'DELETE',
-                    headers: { 'Authorization': `Bearer ${currentApiKey}` }
-                });
-
-                if (res.ok) {
-                    loadAPIKeys();
-                }
-            } catch (error) {
-                console.error('Failed to delete API key:', error);
-            }
-        }
-
-        // Load transactions
-        async function loadTransactions() {
-            if (!currentUser) {
-                console.log('loadTransactions: No currentUser');
-                return;
-            }
-            
-            if (!currentApiKey) {
-                currentApiKey = localStorage.getItem('gonka_api_key');
-            }
-            
-            if (!currentApiKey) {
-                console.log('loadTransactions: No API key available');
-                const list = document.getElementById('transactionsList');
-                if (list) {
-                    list.innerHTML = '<div class="empty-state">Please create an API key first</div>';
-                }
-                return;
-            }
-            
-            console.log('loadTransactions: Loading with API key');
-
-            try {
-                console.log('loadTransactions: Making request with API key:', currentApiKey ? currentApiKey.substring(0, 10) + '...' : 'null');
-                const res = await fetch('/api/transactions?limit=100', {
-                    headers: { 'Authorization': `Bearer ${currentApiKey}` }
-                });
-                
-                if (!res.ok) {
-                    const errorText = await res.text();
-                    console.error('loadTransactions: API error:', res.status, errorText);
-                    throw new Error(`Failed to load transactions: ${res.status} ${errorText}`);
-                }
-                
-                const data = await res.json();
-                console.log('loadTransactions: Received data:', data);
-                
-                const list = document.getElementById('transactionsList');
-                if (!list) {
-                    console.error('loadTransactions: transactionsList element not found');
-                    return;
-                }
-                list.innerHTML = '';
-
-                if (!data.transactions || data.transactions.length === 0) {
-                    list.innerHTML = '<div class="empty-state">No transactions yet</div>';
-                    return;
-                }
-
-                // Load API keys to get names
-                let apiKeysMap = {};
-                try {
-                    const keysRes = await fetch('/api/keys', {
-                        headers: { 'Authorization': `Bearer ${currentApiKey}` }
+                    const defaultModel = 'Qwen/Qwen3-235B-A22B-Instruct-2507-FP8';
+                    models.forEach(model => {
+                        const option = document.createElement('option');
+                        option.value = model.id;
+                        option.textContent = model.id;
+                        modelSelect.appendChild(option);
+                        if (model.id === defaultModel) option.selected = true;
                     });
-                    if (keysRes.ok) {
-                        const keysData = await keysRes.json();
-                        keysData.keys.forEach(key => {
-                            apiKeysMap[key.id] = key.key_name || 'Unnamed';
-                        });
-                    }
-                } catch (e) {
-                    console.error('Failed to load API keys for transaction display:', e);
-                }
-
-                // Create table
-                const table = document.createElement('table');
-                table.className = 'transactions-table';
-                table.innerHTML = `
-                    <thead>
-                        <tr>
-                            <th>Date</th>
-                            <th>Type</th>
-                            <th>Model</th>
-                            <th>API Key</th>
-                            <th>Tokens</th>
-                            <th>Amount (ngonka)</th>
-                            <th>Amount (USD)</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                    </tbody>
-                `;
-
-                const tbody = table.querySelector('tbody');
-                data.transactions.forEach(tx => {
-                    const row = document.createElement('tr');
-                    // Use cost_ngonka from metadata if available (more accurate), otherwise calculate from amount
-                    const amountNgonka = tx.metadata?.cost_ngonka || (Math.abs(tx.amount) * 1000000000);
-                    const amountUsd = (amountNgonka / 1000000000 * gnkPriceUsd).toFixed(6);
-                    const tokens = tx.metadata?.tokens || tx.metadata?.estimated_tokens || '-';
-                    const model = tx.metadata?.model || '-';
-                    const apiKeyId = tx.metadata?.api_key_id;
-                    const apiKeyName = apiKeyId ? (apiKeysMap[apiKeyId] || `Key ${apiKeyId.substring(0, 8)}...`) : '-';
-                    
-                    row.innerHTML = `
-                        <td>${new Date(tx.created_at).toLocaleString()}</td>
-                        <td>${tx.transaction_type}</td>
-                        <td class="transaction-model">${model}</td>
-                        <td class="transaction-api-key" title="${apiKeyName}">${apiKeyName}</td>
-                        <td class="transaction-tokens">${tokens !== '-' ? tokens.toLocaleString() : '-'}</td>
-                        <td class="transaction-amount ${tx.amount < 0 ? 'negative' : 'positive'}">
-                            ${tx.amount > 0 ? '+' : ''}${amountNgonka.toLocaleString()}
-                        </td>
-                        <td class="transaction-amount ${tx.amount < 0 ? 'negative' : 'positive'}">
-                            ${tx.amount > 0 ? '+' : ''}$${amountUsd}
-                        </td>
-                    `;
-                    tbody.appendChild(row);
-                });
-
-                list.appendChild(table);
-            } catch (error) {
-                console.error('Failed to load transactions:', error);
-            }
-        }
-
-        // Load GNK price
-        async function loadGnkPrice() {
-            try {
-                const res = await fetch('/api/gnk/price');
-                if (res.ok) {
-                    const data = await res.json();
-                    gnkPriceUsd = data.price_usd || 4.0;
-                    const priceElement = document.getElementById('gnkPriceValue');
-                    if (priceElement) {
-                        priceElement.textContent = gnkPriceUsd.toFixed(2);
-                    }
+                    if (modelSelect.value === '') modelSelect.selectedIndex = 0;
                 }
             } catch (error) {
-                console.error('Failed to load GNK price:', error);
-            }
-        }
-
-        // Load model prices
-        async function loadModelPrices() {
-            try {
-                const res = await fetch('/api/models/prices');
-                if (res.ok) {
-                    const data = await res.json();
-                    modelPrices = {};
-                    maxPricePerTokenNgonka = 0;
-                    
-                    if (data.prices && data.prices.length > 0) {
-                        data.prices.forEach(price => {
-                            const modelId = price.model_id;
-                            const pricePerToken = price.price || 0;
-                            modelPrices[modelId] = pricePerToken;
-                            if (pricePerToken > maxPricePerTokenNgonka) {
-                                maxPricePerTokenNgonka = pricePerToken;
-                            }
-                        });
-                        console.log('Loaded model prices:', modelPrices);
-                        console.log('Max price per token:', maxPricePerTokenNgonka, 'ngonka');
-                    }
+                console.error('Failed to load models:', error);
+                const modelSelect = document.getElementById('chatModel');
+                if (modelSelect) {
+                    modelSelect.innerHTML = '';
+                    const option = document.createElement('option');
+                    option.value = 'Qwen/Qwen3-235B-A22B-Instruct-2507-FP8';
+                    option.textContent = 'Qwen/Qwen3-235B-A22B-Instruct-2507-FP8 (default)';
+                    modelSelect.appendChild(option);
                 }
-            } catch (error) {
-                console.error('Failed to load model prices:', error);
             }
         }
 
         // Send chat message with retry logic
         async function sendChatMessage() {
-            if (!currentUser) {
-                alert('Please connect wallet first');
-                return;
-            }
-            
-            if (!currentApiKey) {
-                currentApiKey = localStorage.getItem('gonka_api_key');
-            }
-            
-            if (!currentApiKey) {
-                alert('Please create an API key first');
+            const apiKey = document.getElementById('chatApiKey').value.trim();
+            if (!apiKey) {
+                alert('Please enter your API key');
                 return;
             }
 
@@ -2227,44 +1208,35 @@ Authorization: Bearer sk-your-api-key</code>
             const emptyState = messagesDiv.querySelector('.empty-state');
             if (emptyState) emptyState.remove();
 
-            // Add user message
             addChatMessage('user', message);
             input.value = '';
 
-            // Get selected model
             const modelSelect = document.getElementById('chatModel');
             const selectedModel = modelSelect.value || 'Qwen/Qwen3-235B-A22B-Instruct-2507-FP8';
-            
-            if (!selectedModel) {
-                alert('Please select a model');
-                return;
-            }
 
             gaEvent('chat_message_sent', { model: selectedModel });
 
-            // Retry logic: 3 attempts with 10 second delay
             const maxRetries = 3;
-            const retryDelay = 10000; // 10 seconds in milliseconds
+            const retryDelay = 10000;
             let lastError = null;
-            
+
             for (let attempt = 1; attempt <= maxRetries; attempt++) {
                 try {
-                    // Show retry message if not first attempt
                     if (attempt > 1) {
                         const retryMsgDiv = document.createElement('div');
                         retryMsgDiv.className = 'message system';
                         retryMsgDiv.style.opacity = '0.7';
                         retryMsgDiv.style.fontStyle = 'italic';
-                        retryMsgDiv.innerHTML = `<div class="message-content">Повторная попытка ${attempt}/${maxRetries}...</div>`;
+                        retryMsgDiv.innerHTML = `<div class="message-content">Retrying ${attempt}/${maxRetries}...</div>`;
                         messagesDiv.appendChild(retryMsgDiv);
                         messagesDiv.scrollTop = messagesDiv.scrollHeight;
                     }
-                    
+
                     const response = await fetch('/v1/chat/completions', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${currentApiKey}`
+                            'Authorization': `Bearer ${apiKey}`
                         },
                         body: JSON.stringify({
                             model: selectedModel,
@@ -2280,849 +1252,49 @@ Authorization: Bearer sk-your-api-key</code>
 
                     const data = await response.json();
                     const content = data.choices?.[0]?.message?.content || 'No response';
-                    const usage = data.usage || {};
-                    const totalTokens = usage.total_tokens || 0;
-                    
-                    // Calculate cost using model price
-                    const cost = calculateTokenCost(totalTokens, selectedModel);
-                    const pricePerTokenNgonka = modelPrices[selectedModel] || 0;
-                    const costNgonka = totalTokens * pricePerTokenNgonka;
-                    const costUsd = (cost * gnkPriceUsd).toFixed(6);
-                    
-                    // Remove retry message if exists
+
                     const retryMessages = messagesDiv.querySelectorAll('.message.system');
                     retryMessages.forEach(msg => msg.remove());
-                    
-                    addChatMessage('assistant', content, {
-                        tokens: totalTokens,
-                        costNgonka: costNgonka,
-                        costUsd: costUsd
-                    });
-                    
-                    // Update balance
-                    updateUI();
-                    return; // Success, exit retry loop
+
+                    addChatMessage('assistant', content);
+                    return;
                 } catch (error) {
                     console.error(`Chat error (attempt ${attempt}/${maxRetries}):`, error);
                     lastError = error;
-                    
                     if (attempt < maxRetries) {
-                        // Wait before retry
                         await new Promise(resolve => setTimeout(resolve, retryDelay));
                     }
                 }
             }
-            
-            // All retries failed
+
             gaEvent('chat_error', { model: selectedModel, error: (lastError && lastError.message) || 'Unknown error' });
             const errorDiv = document.createElement('div');
             errorDiv.className = 'error-message';
-            errorDiv.innerHTML = `Ошибка после ${maxRetries} попыток: ${lastError.message || 'Unknown error'}`;
+            errorDiv.innerHTML = `Error after ${maxRetries} attempts: ${lastError.message || 'Unknown error'}`;
             messagesDiv.appendChild(errorDiv);
-            
-            // Remove retry messages
+
             const retryMessages = messagesDiv.querySelectorAll('.message.system');
             retryMessages.forEach(msg => msg.remove());
         }
 
-        // Calculate token cost using model price (same as backend)
-        function calculateTokenCost(totalTokens, modelId) {
-            // Get price for this model, or use 0 if not found
-            const pricePerTokenNgonka = modelPrices[modelId] || 0;
-            
-            // Calculate cost in ngonka: tokens * price_per_token
-            const costNgonka = totalTokens * pricePerTokenNgonka;
-            
-            // Convert ngonka to GNK (1 GNK = 1,000,000,000 ngonka)
-            const costGNK = costNgonka / 1000000000;
-            
-            return Math.max(costGNK, 0.0);
-        }
-
-        function addChatMessage(role, content, metadata = null) {
+        function addChatMessage(role, content) {
             messages.push({ role, content });
             const messagesDiv = document.getElementById('chatMessages');
             const messageDiv = document.createElement('div');
             messageDiv.className = `message ${role}`;
-            
-            let costInfo = '';
-            if (role === 'assistant' && metadata) {
-                const tokensInfo = metadata.tokens ? `${metadata.tokens.toLocaleString()} tokens` : '';
-                const costInfoParts = [];
-                if (metadata.costNgonka) {
-                    costInfoParts.push(`${metadata.costNgonka.toLocaleString()} ngonka`);
-                }
-                if (metadata.costUsd) {
-                    costInfoParts.push(`$${metadata.costUsd}`);
-                }
-                if (tokensInfo || costInfoParts.length > 0) {
-                    costInfo = `<div class="message-cost-info" style="margin-top: 8px; font-size: 11px; color: var(--text-secondary); opacity: 0.7; border-top: 1px solid var(--divider); padding-top: 8px;">
-                        ${tokensInfo ? tokensInfo + ' • ' : ''}${costInfoParts.join(' • ')}
-                    </div>`;
-                }
-            }
-            
-            messageDiv.innerHTML = `
-                <div class="message-avatar">${role === 'user' ? 'U' : 'A'}</div>
-                <div class="message-content">${content}${costInfo}</div>
-            `;
+
+            const avatarDiv = document.createElement('div');
+            avatarDiv.className = 'message-avatar';
+            avatarDiv.textContent = role === 'user' ? 'U' : 'AI';
+
+            const contentDiv = document.createElement('div');
+            contentDiv.className = 'message-content';
+            contentDiv.textContent = content;
+
+            messageDiv.appendChild(avatarDiv);
+            messageDiv.appendChild(contentDiv);
             messagesDiv.appendChild(messageDiv);
             messagesDiv.scrollTop = messagesDiv.scrollHeight;
-        }
-        
-        // Load chat models
-        async function loadChatModels() {
-            try {
-                const response = await fetch('/api/models');
-                const data = await response.json();
-                const models = data.models || [];
-                
-                const modelSelect = document.getElementById('chatModel');
-                if (!modelSelect) return;
-                
-                modelSelect.innerHTML = '';
-                
-                if (models.length === 0) {
-                    const option = document.createElement('option');
-                    option.value = 'Qwen/Qwen3-235B-A22B-Instruct-2507-FP8';
-                    option.textContent = 'Qwen/Qwen3-235B-A22B-Instruct-2507-FP8 (default)';
-                    modelSelect.appendChild(option);
-                } else {
-                    const defaultModel = 'Qwen/Qwen3-235B-A22B-Instruct-2507-FP8';
-                    models.forEach(model => {
-                        const option = document.createElement('option');
-                        option.value = model.id;
-                        option.textContent = model.id;
-                        modelSelect.appendChild(option);
-                        // Set as selected if it's the default model
-                        if (model.id === defaultModel) {
-                            option.selected = true;
-                        }
-                    });
-                    // If default model not found in list, select first model
-                    if (modelSelect.value === '') {
-                        modelSelect.selectedIndex = 0;
-                    }
-                }
-            } catch (error) {
-                console.error('Failed to load models:', error);
-                const modelSelect = document.getElementById('chatModel');
-                if (modelSelect) {
-                const option = document.createElement('option');
-                option.value = 'Qwen/Qwen3-235B-A22B-Instruct-2507-FP8';
-                    option.textContent = 'Qwen/Qwen3-235B-A22B-Instruct-2507-FP8 (default)';
-                    modelSelect.innerHTML = '';
-                modelSelect.appendChild(option);
-            }
-        }
-        }
-        
-        // Session management (1 week)
-        const SESSION_DURATION = 7 * 24 * 60 * 60 * 1000; // 7 days in milliseconds
-        
-        function saveSession(user, apiKey, walletAddr) {
-            if (!user) {
-                console.error('saveSession: No user provided');
-                return;
-            }
-            const sessionData = {
-                user: user,
-                apiKey: apiKey || null,
-                walletAddress: walletAddr || null,
-                expiresAt: Date.now() + SESSION_DURATION
-            };
-            try {
-                localStorage.setItem('gonka_session', JSON.stringify(sessionData));
-                const userIdentifier = user.address || user.email || user.google_id || user.id;
-                console.log('Session saved successfully', { 
-                    userIdentifier: userIdentifier,
-                    authType: user.auth_type || (user.address ? 'wallet' : 'google'),
-                    hasApiKey: !!apiKey,
-                    hasWallet: !!walletAddr 
-                });
-            } catch (e) {
-                console.error('Failed to save session:', e);
-            }
-        }
-        
-        function loadSession() {
-            try {
-                const sessionData = localStorage.getItem('gonka_session');
-                if (!sessionData) return null;
-                
-                const session = JSON.parse(sessionData);
-                
-                // Check if session expired
-                if (Date.now() > session.expiresAt) {
-                    localStorage.removeItem('gonka_session');
-                    return null;
-                }
-                
-                return session;
-            } catch (error) {
-                console.error('Failed to load session:', error);
-                localStorage.removeItem('gonka_session');
-                return null;
-            }
-        }
-        
-        function clearSession() {
-            localStorage.removeItem('gonka_session');
-            localStorage.removeItem('gonka_api_key');
-        }
-        
-        // Deposit function - sends transaction via Keplr/Leap wallet
-        async function depositFromWallet() {
-            if (!currentUser) {
-                alert('Please connect wallet first');
-                return;
-            }
-            
-            if (!currentApiKey) {
-                currentApiKey = localStorage.getItem('gonka_api_key');
-            }
-            
-            if (!currentApiKey) {
-                alert('Please create an API key first');
-                return;
-            }
-            
-            // For testing, use 1 GNK as default
-            const amount = prompt('Enter amount to deposit (GNK):', '1');
-            if (!amount || parseFloat(amount) <= 0) {
-                return;
-            }
-            
-            const depositAmount = parseFloat(amount);
-            gaEvent('deposit_attempt', { amount: depositAmount });
-
-            try {
-                // Get recipient address
-                const recipientRes = await fetch('/api/deposit/recipient');
-                if (!recipientRes.ok) {
-                    throw new Error('Failed to get recipient address');
-                }
-                const recipientData = await recipientRes.json();
-                const recipientAddress = recipientData.recipient_address;
-                
-                // Get chain config
-                const chainConfigRes = await fetch('/api/chain/config');
-                if (!chainConfigRes.ok) {
-                    const errorData = await chainConfigRes.json().catch(() => ({ detail: 'Failed to get chain config' }));
-                    throw new Error(errorData.detail || 'Failed to get chain configuration');
-                }
-                const chainConfig = await chainConfigRes.json();
-                console.log('Chain config received:', chainConfig);
-                
-                if (!chainConfig.rpc_url || !chainConfig.api_url) {
-                    throw new Error('Gonka network URLs not configured. Please set GONKA_RPC_URL and GONKA_API_URL environment variables.');
-                }
-                
-                const chainId = chainConfig.chain_id;
-                
-                // Detect wallet
-                let wallet;
-                if (window.keplr) {
-                    wallet = { type: 'keplr', wallet: window.keplr };
-                } else if (window.leap) {
-                    wallet = { type: 'leap', wallet: window.leap };
-                } else {
-                    throw new Error('Please install Keplr or Leap wallet extension');
-                }
-                
-                // Enable chain
-                await wallet.wallet.enable(chainId);
-                
-                // Get offline signer
-                const offlineSigner = wallet.wallet.getOfflineSigner(chainId);
-                const accounts = await offlineSigner.getAccounts();
-                const senderAddress = accounts[0].address;
-                
-                console.log('Sending deposit:', {
-                    from: senderAddress,
-                    to: recipientAddress,
-                    amount: depositAmount,
-                    chainId: chainId
-                });
-                
-                // Send transaction via wallet (try multiple methods)
-                const txHash = await sendDepositTransaction(
-                    offlineSigner,
-                    senderAddress,
-                    recipientAddress,
-                    depositAmount,
-                    chainConfig,
-                    wallet
-                );
-                
-                console.log('Transaction sent, hash:', txHash);
-                
-                // Confirm deposit on backend
-                await confirmDeposit(depositAmount, txHash);
-                
-                alert(`Deposit successful! Transaction hash: ${txHash}`);
-                
-                // Update UI
-                await updateUI();
-                
-            } catch (error) {
-                console.error('Deposit error:', error);
-                gaEvent('deposit_error', { amount: depositAmount, error: (error && error.message) || 'Unknown error' });
-                alert('Deposit failed: ' + error.message);
-            }
-        }
-        
-        // Send deposit transaction via Keplr native API (no external libraries)
-        async function sendDepositTransaction(offlineSigner, fromAddress, toAddress, amountGNK, chainConfig, wallet) {
-            try {
-                // Using ngonka (9 decimals): 1 GNK = 1,000,000,000 ngonka
-                const denom = 'ngonka';
-                const amountNano = Math.floor(amountGNK * 1_000_000_000); // Convert to ngonka (9 decimals)
-                
-                console.log('=== sendDepositTransaction START ===');
-                console.log('Parameters:', {
-                    fromAddress,
-                    toAddress,
-                    amountGNK,
-                    amountNano,
-                    denom,
-                    chainId: chainConfig.chain_id,
-                    rpcUrl: chainConfig.rpc_url
-                });
-                
-                // Use Keplr native API
-                return await sendGonkaDeposit({
-                    chainId: chainConfig.chain_id,
-                    rpcUrl: chainConfig.rpc_url,
-                    fromAddress: fromAddress,
-                    toAddress: toAddress,
-                    amountNano: amountNano.toString(),
-                    denom: denom,
-                    wallet: wallet,
-                    api_url: chainConfig.api_url
-                });
-            } catch (error) {
-                console.error('Transaction error:', error);
-                throw error;
-            }
-        }
-        
-        // Main function to send deposit - sign with wallet, broadcast via public API
-        async function sendGonkaDeposit(params) {
-            const { chainId, fromAddress, toAddress, amountNano, denom = 'ngonka', wallet, api_url } = params;
-            
-            console.log('=== sendGonkaDeposit START ===');
-            console.log('Parameters:', params);
-            
-            if (!window.keplr && !window.leap) {
-                throw new Error('Keplr или Leap не найден');
-            }
-            
-            const walletObj = wallet?.type === 'leap' ? window.leap : window.keplr;
-            if (!walletObj) {
-                throw new Error('Кошелек не доступен');
-            }
-            
-            console.log('🔐 Подключаемся к кошельку...');
-            await walletObj.enable(chainId);
-            
-            // Get account info for sequence
-            console.log('Получаем информацию об аккаунте...');
-            const accountInfo = await getAccountInfo(fromAddress, { chain_id: chainId, api_url: api_url || '' });
-            
-            // Amino сообщение для перевода
-            const msgs = [{
-                type: "cosmos-sdk/MsgSend",
-                value: {
-                    from_address: fromAddress,
-                    to_address: toAddress,
-                    amount: [{ denom, amount: amountNano.toString() }]
-                }
-            }];
-            
-            // Fee для Gonka
-            const fee = {
-                amount: [{ denom, amount: '25000' }], // Gas fee in ngonka
-                gas: '200000',
-                granter: ""
-            };
-            
-            // Create sign doc
-            const signDoc = {
-                chain_id: chainId,
-                account_number: accountInfo.accountNumber.toString(),
-                sequence: accountInfo.sequence.toString(),
-                fee: fee,
-                msgs: msgs,
-                memo: "Deposit to Gonka Proxy"
-            };
-            
-            console.log('🔐 Подписываем транзакцию в кошельке...');
-            console.log('Sign doc:', JSON.stringify(signDoc, null, 2));
-            
-            // Используем signAndBroadcast для Protobuf формата (работает внутри с Protobuf)
-            // Но нам нужно получить tx_bytes для отправки через бэкенд
-            // Альтернатива: используем CosmJS для сборки Protobuf транзакции
-            
-            // Для простоты используем signAndBroadcast который уже работает с Protobuf
-            // Но он сразу отправляет транзакцию, а нам нужно отправить через бэкенд
-            // Поэтому используем signAmino и отправляем на бэкенд
-            // Бэкенд ожидает Protobuf tx_bytes, но пока мы отправляем Amino формат
-            
-            // TODO: Использовать CosmJS или signDirect для получения Protobuf tx_bytes
-            // Пока используем signAmino (Amino формат)
-            const signResponse = await walletObj.signAmino(chainId, fromAddress, signDoc);
-            
-            console.log('✅ Транзакция подписана (Amino format)');
-            
-            // Отправляем signResponse на бэкенд
-            // Бэкенд ожидает Protobuf, но пока принимаем Amino
-            const tx = signResponse.signed;
-            
-            console.log('📡 Отправляем транзакцию через бэкенд...');
-            console.log('Transaction (signed.signed):', JSON.stringify(tx, null, 2));
-            
-            // Use backend broadcast endpoint (avoids CORS issues)
-            try {
-                const broadcastUrl = '/api/transactions/broadcast';
-                console.log('Broadcasting via backend:', broadcastUrl);
-                
-                // Get API key for authentication
-                if (!currentApiKey) {
-                    currentApiKey = localStorage.getItem('gonka_api_key');
-                }
-                
-                if (!currentApiKey) {
-                    throw new Error('API key not found. Please connect wallet first.');
-                }
-                
-                const broadcastResponse = await fetch(broadcastUrl, {
-                    method: 'POST',
-                    headers: { 
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${currentApiKey}`
-                    },
-                    body: JSON.stringify({ 
-                        tx: tx, 
-                        type: 'amino' 
-                    })
-                });
-                
-                if (!broadcastResponse.ok) {
-                    const errorText = await broadcastResponse.text();
-                    let errorDetail = errorText;
-                    try {
-                        const errorJson = JSON.parse(errorText);
-                        errorDetail = errorJson.detail || errorJson.error || errorText;
-                    } catch (e) {
-                        // Keep original error text
-                    }
-                    throw new Error(`Broadcast failed: ${broadcastResponse.status} - ${errorDetail}`);
-                }
-                
-                const broadcastResult = await broadcastResponse.json();
-                console.log('✅ Результат от бэкенда:', broadcastResult);
-                
-                if (!broadcastResult.success) {
-                    const errorMsg = broadcastResult.error || broadcastResult.message || 'Transaction failed';
-                    throw new Error(errorMsg);
-                }
-                
-                const txHash = broadcastResult.tx_hash;
-                if (txHash) {
-                    console.log('✅ TX отправлена через бэкенд, hash:', txHash);
-                    console.log('Status:', broadcastResult.status);
-                    console.log('Height:', broadcastResult.height);
-                    console.log('Gas used:', broadcastResult.gas_used);
-                    return txHash;
-                } else {
-                    throw new Error('Transaction hash not returned from backend');
-                }
-            } catch (broadcastError) {
-                console.error('Backend broadcast failed:', broadcastError);
-                throw new Error(`Failed to broadcast transaction: ${broadcastError.message}`);
-            }
-        }
-        
-        // OLD METHODS REMOVED - using sendGonkaDeposit instead
-        // Method 1: Direct Keplr/Leap - use signAmino + sendTx (REMOVED - not used)
-        async function sendViaKeplrDirect_OLD(wallet, chainConfig, fromAddress, toAddress, amountNano, denom, fee) {
-            console.log('=== sendViaKeplrDirect START ===');
-            console.log('Parameters:', {
-                walletType: wallet?.type,
-                chainId: chainConfig.chain_id,
-                fromAddress,
-                toAddress,
-                amountNano,
-                denom,
-                fee: JSON.stringify(fee, null, 2)
-            });
-            
-            if (!wallet || (!window.keplr && !window.leap)) {
-                console.error('Wallet not available:', {
-                    hasWallet: !!wallet,
-                    hasKeplr: !!window.keplr,
-                    hasLeap: !!window.leap
-                });
-                throw new Error('Wallet not available');
-            }
-            
-            const walletObj = wallet.type === 'keplr' ? window.keplr : window.leap;
-            if (!walletObj) {
-                console.error('Wallet object not found:', wallet.type);
-                throw new Error(`${wallet.type} wallet not available`);
-            }
-            
-            console.log('Wallet object methods:', {
-                type: wallet.type,
-                hasSignAndBroadcast: !!walletObj.signAndBroadcast,
-                hasSignAmino: !!walletObj.signAmino,
-                hasSendTx: !!walletObj.sendTx,
-                walletObjKeys: Object.keys(walletObj).filter(k => k.includes('sign') || k.includes('send') || k.includes('broadcast'))
-            });
-            
-            // Use signAndBroadcast only (wallet handles everything, uses protobuf internally)
-            if (!walletObj.signAndBroadcast) {
-                console.error('signAndBroadcast not available');
-                throw new Error('Wallet does not support signAndBroadcast. Please use CosmJS method instead.');
-            }
-            
-            try {
-                console.log('=== Using signAndBroadcast (wallet handles everything) ===');
-                
-                // signAndBroadcast expects Amino format messages (wallet converts to protobuf internally)
-                const msgs = [{
-                    type: 'cosmos-sdk/MsgSend',
-                    value: {
-                        from_address: fromAddress,
-                        to_address: toAddress,
-                        amount: [{
-                            denom: denom,
-                            amount: amountNano.toString()
-                        }]
-                    }
-                }];
-                
-                console.log('signAndBroadcast parameters:', {
-                    chainId: chainConfig.chain_id,
-                    fromAddress,
-                    msgs: JSON.stringify(msgs, null, 2),
-                    fee: JSON.stringify(fee, null, 2),
-                    memo: 'Deposit to Gonka Proxy'
-                });
-                
-                const result = await walletObj.signAndBroadcast(
-                    chainConfig.chain_id,
-                    fromAddress,
-                    msgs,
-                    fee,
-                    'Deposit to Gonka Proxy'
-                );
-                
-                console.log('=== signAndBroadcast Result ===');
-                console.log('Result:', result);
-                console.log('Result keys:', result ? Object.keys(result) : []);
-                
-                const txHash = result.transactionHash || result.txhash || result.hash;
-                
-                if (!txHash) {
-                    console.error('No tx hash in signAndBroadcast result');
-                    console.error('Result:', result);
-                    throw new Error('Transaction hash not returned from wallet');
-                }
-                
-                console.log('=== signAndBroadcast SUCCESS ===');
-                console.log('Transaction hash:', txHash);
-                return txHash;
-            } catch (error) {
-                console.error('=== signAndBroadcast ERROR ===');
-                console.error('Error:', error);
-                console.error('Error message:', error.message);
-                console.error('Error stack:', error.stack);
-                console.error('Error name:', error.name);
-                throw new Error(`Failed to send transaction via signAndBroadcast: ${error.message}`);
-            }
-        }
-        
-        
-        // Method 2: CosmJS SigningStargateClient (REMOVED - not used, CDN doesn't load)
-        async function sendViaCosmJS_OLD(offlineSigner, chainConfig, fromAddress, toAddress, amountNano, denom, fee) {
-            console.log('=== sendViaCosmJS START ===');
-            console.log('Parameters:', {
-                rpcUrl: chainConfig.rpc_url,
-                fromAddress,
-                toAddress,
-                amountNano,
-                denom,
-                fee: JSON.stringify(fee, null, 2)
-            });
-            
-            if (!chainConfig.rpc_url) {
-                throw new Error('Gonka RPC URL not configured');
-            }
-            
-            // Check if CosmJS is loaded (from standalone bundles in <head>)
-            console.log('=== Checking for CosmJS library ===');
-            console.log('window.SigningStargateClient:', typeof window.SigningStargateClient);
-            console.log('window.cosmjs:', typeof window.cosmjs);
-            console.log('window.cosmjsStargate:', typeof window.cosmjsStargate);
-            console.log('Available window properties:', Object.keys(window).filter(k => k.toLowerCase().includes('cosm') || k.toLowerCase().includes('sign') || k.toLowerCase().includes('stargate')));
-            
-            // Try multiple ways to access SigningStargateClient
-            let SigningStargateClient;
-            
-            // Method 1: Direct global
-            if (window.SigningStargateClient && typeof window.SigningStargateClient === 'function') {
-                console.log('Found window.SigningStargateClient');
-                SigningStargateClient = window.SigningStargateClient;
-            }
-            // Method 2: Through cosmjs namespace
-            else if (window.cosmjs && window.cosmjs.stargate && window.cosmjs.stargate.SigningStargateClient) {
-                console.log('Found window.cosmjs.stargate.SigningStargateClient');
-                SigningStargateClient = window.cosmjs.stargate.SigningStargateClient;
-            }
-            // Method 3: Through cosmjsStargate namespace
-            else if (window.cosmjsStargate && window.cosmjsStargate.SigningStargateClient) {
-                console.log('Found window.cosmjsStargate.SigningStargateClient');
-                SigningStargateClient = window.cosmjsStargate.SigningStargateClient;
-            }
-            // Method 4: Check if it's in a different format
-            else {
-                // Bundle files might export differently - check all possible paths
-                const possiblePaths = [
-                    window.cosmjs?.SigningStargateClient,
-                    window.stargate?.SigningStargateClient,
-                    window['@cosmjs/stargate']?.SigningStargateClient
-                ];
-                
-                for (const path of possiblePaths) {
-                    if (path && typeof path === 'function') {
-                        console.log('Found SigningStargateClient in alternative path');
-                        SigningStargateClient = path;
-                        break;
-                    }
-                }
-            }
-            
-            if (!SigningStargateClient) {
-                console.error('SigningStargateClient not found in any expected location');
-                console.error('Please check browser console for CosmJS loading errors');
-                throw new Error('CosmJS SigningStargateClient not loaded. Please refresh the page and check browser console for CDN loading errors.');
-            }
-            
-            console.log('SigningStargateClient found:', typeof SigningStargateClient);
-            console.log('Creating SigningStargateClient with RPC:', chainConfig.rpc_url);
-            
-            let client;
-            try {
-                client = await SigningStargateClient.connectWithSigner(chainConfig.rpc_url, offlineSigner);
-                console.log('SigningStargateClient connected successfully');
-            } catch (connectError) {
-                console.error('Failed to connect SigningStargateClient:', connectError);
-                console.error('Connection error details:', {
-                    message: connectError.message,
-                    stack: connectError.stack
-                });
-                throw new Error(`Failed to connect to RPC: ${connectError.message}`);
-            }
-            
-            console.log('=== Sending tokens via CosmJS (protobuf) ===');
-            console.log('Transaction details:', {
-                from: fromAddress,
-                to: toAddress,
-                amount: [{ denom, amount: amountNano.toString() }],
-                fee: JSON.stringify(fee, null, 2),
-                memo: 'Deposit to Gonka Proxy'
-            });
-            
-            try {
-                const result = await client.sendTokens(
-                    fromAddress,
-                    toAddress,
-                    [{
-                        denom: denom,
-                        amount: amountNano.toString()
-                    }],
-                    fee, // Explicit fee (required for protobuf)
-                    'Deposit to Gonka Proxy' // Memo
-                );
-                
-                console.log('=== CosmJS sendTokens SUCCESS ===');
-                console.log('Transaction result:', result);
-                console.log('Transaction hash:', result.transactionHash);
-                
-                if (!result.transactionHash) {
-                    throw new Error('Transaction hash not returned');
-                }
-                
-                return result.transactionHash;
-            } catch (sendError) {
-                console.error('=== CosmJS sendTokens ERROR ===');
-                console.error('Error:', sendError);
-                console.error('Error message:', sendError.message);
-                console.error('Error stack:', sendError.stack);
-                throw new Error(`Failed to send tokens: ${sendError.message}`);
-            }
-        }
-        
-        // Method 3: Manual transaction building with offlineSigner (REMOVED - not used)
-        async function sendViaKeplrSign_OLD(offlineSigner, wallet, chainConfig, fromAddress, toAddress, amountNano, denom, fee) {
-            if (!chainConfig.rpc_url) {
-                throw new Error('Gonka RPC URL not configured');
-            }
-            
-            // Get account info
-            const accountInfo = await getAccountInfo(fromAddress, chainConfig);
-            
-            // Use CosmJS to build and sign transaction
-            const { SigningStargateClient } = window.cosmjsStargate || window.cosmjs?.stargate || {};
-            if (!SigningStargateClient) {
-                throw new Error('CosmJS not available for transaction building');
-            }
-            
-            // Create client - it will use offlineSigner for signing
-            const client = await SigningStargateClient.connectWithSigner(chainConfig.rpc_url, offlineSigner);
-            
-            // Use client's sendTokens which handles signing and broadcasting
-            const result = await client.sendTokens(
-                fromAddress,
-                toAddress,
-                [{
-                    denom: denom,
-                    amount: amountNano.toString()
-                }],
-                fee,
-                'Deposit to Gonka Proxy'
-            );
-            
-            return result.transactionHash;
-        }
-        
-        // Helper: Get account info via backend proxy (avoids CORS)
-        async function getAccountInfo(address, chainConfig) {
-            // Use backend proxy to avoid CORS issues
-            const accountRes = await fetch(`/api/account/info/${address}`);
-            
-            if (!accountRes.ok) {
-                const errorData = await accountRes.json().catch(() => ({ detail: 'Failed to get account info' }));
-                throw new Error(errorData.detail || `Failed to get account info: ${accountRes.status}`);
-            }
-            
-            const accountData = await accountRes.json();
-            
-            return {
-                accountNumber: parseInt(accountData.account_number || '0'),
-                sequence: parseInt(accountData.sequence || '0')
-            };
-        }
-        
-        // Show deposit confirmation UI
-        function showDepositConfirmation(pendingDeposit) {
-            // Remove existing modal if any
-            const existingModal = document.getElementById('depositConfirmationModal');
-            if (existingModal) {
-                existingModal.remove();
-            }
-            
-            // Create confirmation modal
-            const modal = document.createElement('div');
-            modal.id = 'depositConfirmationModal';
-            modal.innerHTML = `
-                <div>
-                    <h2>Confirm Deposit</h2>
-                    <p style="margin-bottom: 12px; color: var(--text-secondary);">Send <strong style="color: var(--text-primary);">${pendingDeposit.amount} GNK</strong> to:</p>
-                    <code>${pendingDeposit.recipient}</code>
-                    <div style="margin-top: 20px;">
-                        <label style="display: block; margin-bottom: 8px; font-weight: 500; color: var(--text-primary);">Transaction Hash (optional):</label>
-                        <input type="text" id="depositTxHash" placeholder="Enter transaction hash after sending">
-                    </div>
-                    <div class="modal-buttons">
-                        <button id="confirmDepositBtn" class="btn btn-primary">Confirm Deposit</button>
-                        <button id="cancelDepositBtn" class="btn" style="background: var(--background); color: var(--text-primary); border: 1px solid var(--divider);">Cancel</button>
-                    </div>
-                </div>
-            `;
-            document.body.appendChild(modal);
-            
-            // Event listeners
-            document.getElementById('confirmDepositBtn').addEventListener('click', async () => {
-                const txHash = document.getElementById('depositTxHash').value.trim();
-                const amount = pendingDeposit.amount;
-                try {
-                    await confirmDeposit(amount, txHash || null);
-                    modal.remove();
-                    localStorage.removeItem('pending_deposit');
-                } catch (e) {
-                    gaEvent('deposit_error', { amount: amount, error: (e && e.message) || 'Unknown error', stage: 'confirm_modal' });
-                }
-            });
-            
-            document.getElementById('cancelDepositBtn').addEventListener('click', () => {
-                modal.remove();
-                localStorage.removeItem('pending_deposit');
-            });
-        }
-        
-        // Wait for transaction confirmation
-        async function waitForTransaction(txHash) {
-            const maxAttempts = 30;
-            const delay = 2000; // 2 seconds
-            
-            for (let i = 0; i < maxAttempts; i++) {
-                try {
-                    const response = await fetch(`/api/deposit/status/${txHash}`, {
-                        headers: { 'Authorization': `Bearer ${currentApiKey}` }
-                    });
-                    const data = await response.json();
-                    
-                    if (data.status === 'confirmed' || data.status === 'success') {
-                        return true;
-                    }
-                    
-                    await new Promise(resolve => setTimeout(resolve, delay));
-            } catch (error) {
-                    console.error('Error checking transaction status:', error);
-                }
-            }
-            
-            return false;
-        }
-        
-        // Confirm deposit after transaction
-        async function confirmDeposit(amount, txHash) {
-            try {
-                const response = await fetch('/api/deposit/confirm', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${currentApiKey}`
-                },
-                    body: JSON.stringify({
-                        amount: amount,
-                        tx_hash: txHash
-                    })
-            });
-
-            if (!response.ok) {
-                const error = await response.json().catch(() => ({ detail: 'Unknown error' }));
-                    throw new Error(error.detail || 'Deposit confirmation failed');
-            }
-
-            const data = await response.json();
-                gaEvent('deposit_success', { amount: amount });
-                alert(`Deposit confirmed! ${amount} GNK has been added to your balance.`);
-                
-                // Update balance
-                currentUser.balance = data.balance;
-                await updateUI();
-                if (typeof loadTransactions === 'function') {
-                    loadTransactions();
-                }
-            } catch (error) {
-                console.error('Deposit confirmation error:', error);
-                gaEvent('deposit_error', { amount: amount, error: (error && error.message) || 'Unknown error', stage: 'confirm' });
-                alert('Deposit confirmation failed: ' + error.message);
-            }
         }
 
         // Copy code block buttons
@@ -3150,184 +1322,17 @@ Authorization: Bearer sk-your-api-key</code>
             link.addEventListener('click', (e) => {
                 e.preventDefault();
                 const page = e.target.getAttribute('data-page');
-                
-                // Update active nav
+
                 document.querySelectorAll('.sidebar-nav a').forEach(a => a.classList.remove('active'));
                 e.target.classList.add('active');
-                
-                // Show page
+
                 document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
                 document.getElementById(page).classList.add('active');
-                
-                // Load page data
-                if (page === 'api-keys') loadAPIKeys();
-                if (page === 'transactions') loadTransactions();
-                // Docs page is already loaded in the page div
             });
         });
 
-        // Try to restore session on page load
-        async function restoreSession() {
-            const session = loadSession();
-            if (session) {
-                console.log('Restoring session...', session);
-                currentUser = session.user;
-                currentApiKey = session.apiKey;
-                walletAddress = session.walletAddress;
-                
-                // If no API key in session, try to get from localStorage
-                if (!currentApiKey) {
-                    currentApiKey = localStorage.getItem('gonka_api_key');
-                    console.log('No API key in session, trying localStorage:', currentApiKey ? 'found' : 'not found');
-                    
-                    // If found in localStorage, verify it belongs to this user
-                    if (currentApiKey) {
-                        try {
-                            const verifyRes = await fetch('/api/user/me', {
-                                headers: { 'Authorization': `Bearer ${currentApiKey}` }
-                            });
-                            if (verifyRes.ok) {
-                                const verifyData = await verifyRes.json();
-                                // Compare user identifiers (address, email, google_id, or id)
-                                const sessionUserId = session.user.address || session.user.email || session.user.google_id || session.user.id;
-                                const verifyUserId = verifyData.address || verifyData.email || verifyData.google_id || verifyData.id;
-                                if (verifyUserId === sessionUserId) {
-                                    console.log('API key from localStorage verified for user');
-                                    // Update session with API key
-                                    saveSession(currentUser, currentApiKey, walletAddress);
-                                } else {
-                                    console.log('API key from localStorage belongs to different user, clearing');
-                                    localStorage.removeItem('gonka_api_key');
-                                    currentApiKey = null;
-                                }
-                            } else {
-                                console.log('API key from localStorage is invalid, clearing');
-                                localStorage.removeItem('gonka_api_key');
-                                currentApiKey = null;
-                            }
-                        } catch (e) {
-                            console.error('Failed to verify API key from localStorage:', e);
-                            // Keep the key, might be network issue
-                        }
-                    }
-                }
-                
-                // Verify session is still valid by checking user
-                try {
-                    if (currentApiKey) {
-                        const userRes = await fetch('/api/user/me', {
-                            headers: { 'Authorization': `Bearer ${currentApiKey}` }
-                        });
-                        if (userRes.ok) {
-                            const userData = await userRes.json();
-                            // Verify the API key belongs to the user from session
-                            // Compare user identifiers (address, email, google_id, or id)
-                            const sessionUserId = session.user.address || session.user.email || session.user.google_id || session.user.id;
-                            const userDataId = userData.address || userData.email || userData.google_id || userData.id;
-                            if (userDataId === sessionUserId) {
-                                currentUser = userData;
-                                // Update session with fresh user data and API key
-                                saveSession(currentUser, currentApiKey, walletAddress);
-                                await updateUI();
-                                
-                                // Wait a bit to ensure UI is updated
-                                await new Promise(resolve => setTimeout(resolve, 100));
-                                
-                                // Force reload all data
-                                await loadDashboard();
-                                if (typeof loadAPIKeys === 'function') {
-                                    await loadAPIKeys();
-                                }
-                                if (typeof loadTransactions === 'function') {
-                                    await loadTransactions();
-                                }
-                                loadChatModels();
-                                // Show logout button when session restored
-                                document.getElementById('logoutBtn').style.display = 'block';
-                                console.log('Session restored successfully');
-                                return true;
-                            } else {
-                                // API key belongs to different user, clear session
-                                console.log('API key belongs to different user, clearing session');
-                                clearSession();
-                                return false;
-                            }
-                        } else {
-                            // Session invalid, clear it
-                            console.log('API key invalid, clearing session');
-                            clearSession();
-                            return false;
-                        }
-                    } else {
-                        // No API key available, but keep session for user info
-                        console.log('No API key available, but keeping session for user info');
-                        await updateUI();
-                        document.getElementById('logoutBtn').style.display = 'block';
-                        // Don't clear session, user can create API key
-                        return true;
-                    }
-                } catch (error) {
-                    console.error('Failed to verify session:', error);
-                    // Don't clear session on network errors, might be temporary
-                    if (error.message && error.message.includes('Failed to fetch')) {
-                        console.log('Network error, keeping session');
-                        await updateUI();
-                        document.getElementById('logoutBtn').style.display = 'block';
-                        return true;
-                    }
-                    clearSession();
-                    return false;
-                }
-            }
-            return false;
-        }
-        
-        // Logout function
-        function logout() {
-            // Clear session
-            clearSession();
-            
-            // Reset state
-            currentUser = null;
-            currentApiKey = null;
-            walletAddress = null;
-            
-            // Reset UI
-            document.getElementById('connectBtn').style.display = 'block';
-            document.getElementById('connectGoogleBtn').style.display = 'block';
-            document.getElementById('balanceDisplay').style.display = 'none';
-            document.getElementById('userAddress').style.display = 'none';
-            document.getElementById('depositBtnHeader').style.display = 'none';
-            document.getElementById('logoutBtn').style.display = 'none';
-            
-            // Clear chat
-            const messagesDiv = document.getElementById('chatMessages');
-            if (messagesDiv) {
-                messagesDiv.innerHTML = '<div class="empty-state"><p>Start a conversation</p></div>';
-            }
-            messages = [];
-            
-            // Show login page
-            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-            document.getElementById('chat').classList.add('active');
-            
-            // Update sidebar
-            document.querySelectorAll('.sidebar-nav a').forEach(a => a.classList.remove('active'));
-            const chatLink = document.querySelector('.sidebar-nav a[data-page="chat"]');
-            if (chatLink) {
-                chatLink.classList.add('active');
-            }
-            
-            console.log('Logged out successfully');
-        }
-        
         // Event listeners
-        document.getElementById('connectBtn').addEventListener('click', connectWallet);
-        document.getElementById('connectGoogleBtn').addEventListener('click', connectGoogle);
-        document.getElementById('logoutBtn').addEventListener('click', logout);
-        document.getElementById('createKeyBtn').addEventListener('click', createAPIKey);
         document.getElementById('sendChatBtn').addEventListener('click', sendChatMessage);
-        document.getElementById('depositBtnHeader').addEventListener('click', depositFromWallet);
         document.getElementById('chatModel').addEventListener('change', (e) => {
             const model = e.target.value;
             if (model) gaEvent('model_selected', { model: model });
@@ -3335,46 +1340,13 @@ Authorization: Bearer sk-your-api-key</code>
         document.getElementById('chatInput').addEventListener('keypress', (e) => {
             if (e.key === 'Enter') sendChatMessage();
         });
-        
-        // Try to restore session and load models on page load
-        window.addEventListener('load', async () => {
-            // Load GNK price first
-            await Promise.all([
-                loadGnkPrice(),
-                loadModelPrices()
-            ]);
-            
-            // Check wallet availability
-            checkWalletAvailability();
-            
-            // Check for pending deposit
-            const pendingDeposit = localStorage.getItem('pending_deposit');
-            if (pendingDeposit) {
-                try {
-                    const deposit = JSON.parse(pendingDeposit);
-                    // Check if deposit is not too old (24 hours)
-                    if (Date.now() - deposit.timestamp < 24 * 60 * 60 * 1000) {
-                        showDepositConfirmation(deposit);
-                    } else {
-                        localStorage.removeItem('pending_deposit');
-                    }
-                } catch (e) {
-                    console.error('Failed to parse pending deposit:', e);
-                    localStorage.removeItem('pending_deposit');
-                }
-            }
-            
-            // Try to restore session
-            const restored = await restoreSession();
-            if (!restored) {
-                // Load models even if no session
-                loadChatModels();
-            }
-        });
 
-        // Make deleteKey global
-        window.deleteKey = deleteKey;
+        // Load models on page load
+        window.addEventListener('load', () => {
+            loadChatModels();
+        });
     </script>
+
     
     <footer class="footer">
         <div class="footer-content">
@@ -3391,17 +1363,17 @@ Authorization: Bearer sk-your-api-key</code>
                     </svg>
                     Discord
                 </a>
-                <a href="" target="_blank" rel="noopener noreferrer">
+                <a href="https://cloudmine.mingles.ai/" target="_blank" rel="noopener noreferrer">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z" />
                     </svg>
                     CloudMine
                 </a>
-                <a href="https://t.me/gonka_cloudmine" target="_blank" rel="noopener noreferrer">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/>
+                <a href="https://gonka-gateway.mingles.ai/" target="_blank" rel="noopener noreferrer">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
                     </svg>
-                    Support
+                    Gateway
                 </a>
                 <a href="https://gnk.space/" target="_blank" rel="noopener noreferrer">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
